@@ -1,6 +1,0 @@
-Hello, World!
-This is a test file.
-It has multiple lines.
-Some lines are short.
-And some lines are a bit longer than others.
-The last line has no newline
