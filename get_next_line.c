@@ -26,6 +26,11 @@ static char	*process_line_with_newline(char **saved, char *newline_pos)
 	line[len - 1] = '\n';
 	line[len] = '\0';
 	temp = ft_strdup(newline_pos + 1);
+	if (!temp)
+	{
+		free(line);
+		return (NULL);
+	}
 	free(*saved);
 	*saved = temp;
 	return (line);
@@ -56,9 +61,45 @@ static char	*process_buffer(char **saved, char *buffer, ssize_t read_bytes)
 		temp = ft_strjoin(*saved, buffer);
 	else
 		temp = ft_strjoin("", buffer);
+	if (!temp)
+		return (NULL);
 	free(*saved);
 	*saved = temp;
 	return (*saved);
+}
+
+static char	*allocate_buffer(char **saved)
+{
+	char	*buffer;
+
+	buffer = malloc((BUFFER_SIZE + 1) * sizeof(char));
+	if (!buffer)
+	{
+		free(*saved);
+		*saved = NULL;
+		return (NULL);
+	}
+	return (buffer);
+}
+
+static int	handle_read_error(char **saved, char *buffer)
+{
+	free(buffer);
+	free(*saved);
+	*saved = NULL;
+	return (0);
+}
+
+static int	read_chunk(int fd, char **saved, char *buffer)
+{
+	ssize_t	read_bytes;
+
+	read_bytes = read(fd, buffer, BUFFER_SIZE);
+	if (read_bytes == -1)
+		return (handle_read_error(saved, buffer));
+	if (!process_buffer(saved, buffer, read_bytes))
+		return (handle_read_error(saved, buffer));
+	return (read_bytes);
 }
 
 static char	*read_to_saved(int fd, char **saved)
@@ -66,20 +107,20 @@ static char	*read_to_saved(int fd, char **saved)
 	char	*buffer;
 	ssize_t	read_bytes;
 
-	buffer = malloc((BUFFER_SIZE + 1) * sizeof(char));
+	buffer = allocate_buffer(saved);
 	if (!buffer)
 		return (NULL);
 	read_bytes = 1;
 	while (read_bytes > 0 && (!*saved || !ft_strchr(*saved, '\n')))
 	{
-		read_bytes = read(fd, buffer, BUFFER_SIZE);
-		if (read_bytes == -1)
+		read_bytes = read_chunk(fd, saved, buffer);
+		if (read_bytes <= 0)
 		{
 			free(buffer);
+			if (read_bytes == 0)
+				return (*saved);
 			return (NULL);
 		}
-		if (!process_buffer(saved, buffer, read_bytes))
-			break ;
 	}
 	free(buffer);
 	return (*saved);
@@ -99,7 +140,7 @@ char	*get_next_line(int fd)
 			if (saved)
 			{
 				line = extract_line(&saved);
-				if (!line && saved)
+				if (!line)
 				{
 					free(saved);
 					saved = NULL;
