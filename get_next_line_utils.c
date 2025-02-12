@@ -12,94 +12,78 @@
 
 #include "get_next_line.h"
 
-size_t	ft_strlen(const char *s)
+size_t	gnl_strlen(const char *s)
 {
 	size_t	i;
 
+	i = 0;
 	if (!s)
 		return (0);
-	i = 0;
 	while (s[i])
 		i++;
 	return (i);
 }
 
-char	*ft_strchr(const char *s, int c)
+char	*gnl_strchr(const char *s, int c)
 {
+	size_t	i;
+
+	i = 0;
 	if (!s)
 		return (NULL);
-	while (*s)
+	while (s[i])
 	{
-		if (*s == (char)c)
-			return ((char *)s);
-		s++;
+		if ((unsigned char)s[i] == (unsigned char)c)
+			return ((char *)&s[i]);
+		i++;
 	}
-	if ((char)c == '\0')
-		return ((char *)s);
+	if (c == 0)
+		return ((char *)&s[i]);
 	return (NULL);
 }
 
-char	*ft_strdup(const char *s1)
+char	*gnl_strjoin(char const *s1, char const *s2)
 {
-	char	*str;
-	size_t	len;
-	size_t	i;
-
-	if (!s1)
-		return (NULL);
-	len = ft_strlen(s1);
-	str = (char *)malloc(sizeof(char) * (len + 1));
-	if (!str)
-		return (NULL);
-	i = 0;
-	while (i < len)
-	{
-		str[i] = s1[i];
-		i++;
-	}
-	str[i] = '\0';
-	return (str);
-}
-
-char	*ft_strjoin(char const *s1, char const *s2)
-{
-	char	*str;
 	size_t	i;
 	size_t	j;
-	size_t	s1_len;
-	size_t	s2_len;
+	char	*res;
+	size_t	len1;
+	size_t	len2;
 
-	if (!s1 && !s2)
+	len1 = gnl_strlen(s1);
+	len2 = gnl_strlen(s2);
+	res = (char *)malloc(len1 + len2 + 1);
+	if (!res)
 		return (NULL);
-	s1_len = ft_strlen(s1);
-	s2_len = ft_strlen(s2);
-	str = (char *)malloc(sizeof(char) * (s1_len + s2_len + 1));
-	if (!str)
-		return (NULL);
-	i = -1;
-	while (++i < s1_len)
-		str[i] = s1[i];
-	j = -1;
-	while (++j < s2_len)
-		str[i + j] = s2[j];
-	str[i + j] = '\0';
-	return (str);
-}
-
-size_t	ft_strlcpy(char *dst, const char *src, size_t dstsize)
-{
-	size_t	i;
-	size_t	src_len;
-
-	src_len = ft_strlen(src);
-	if (dstsize == 0)
-		return (src_len);
 	i = 0;
-	while (i < dstsize - 1 && src[i])
+	j = 0;
+	while (s1 && s1[i])
 	{
-		dst[i] = src[i];
+		res[i] = s1[i];
 		i++;
 	}
-	dst[i] = '\0';
-	return (src_len);
+	while (s2 && s2[j])
+		res[i++] = s2[j++];
+	res[i] = '\0';
+	return (res);
+}
+
+char	*gnl_strdup(const char *s)
+{
+	size_t	i;
+	size_t	len;
+	char	*dup;
+
+	len = gnl_strlen(s);
+	dup = (char *)malloc(len + 1);
+	if (!dup)
+		return (NULL);
+	i = 0;
+	while (s[i])
+	{
+		dup[i] = s[i];
+		i++;
+	}
+	dup[i] = '\0';
+	return (dup);
 }

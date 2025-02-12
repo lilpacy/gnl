@@ -12,132 +12,100 @@
 
 #include "get_next_line.h"
 
-static char	*process_line_with_newline(char **saved, char *newline_pos)
+/*
+** Input: fd = 3, stash = NULL
+** Output: "Hello\n" (first line from file)
+**         or "Hello\nWo" (if BUFFER_SIZE > line length)
+*/
+static char	*gnl_read_and_stash(int fd, char *stash)
 {
+	char	*buf;
+	ssize_t	read_size;
+	char	*tmp;
+
+	buf = (char *)malloc(BUFFER_SIZE + 1);
+	if (!buf)
+		return (NULL);
+	read_size = 1;
+	while (!gnl_strchr(stash, '\n') && read_size > 0)
+	{
+		read_size = read(fd, buf, BUFFER_SIZE);
+		if (read_size <= 0)
+			break ;
+		buf[read_size] = '\0';
+		tmp = gnl_strjoin(stash, buf);
+		free(stash);
+		stash = tmp;
+	}
+	free(buf);
+	if (read_size <= 0 && !stash)
+		return (NULL);
+	return (stash);
+}
+
+/*
+** Input: stash = "Hello\nWorld"
+** Output: "Hello\n"
+*/
+static char	*gnl_extract_line(char *stash)
+{
+	size_t	i;
 	char	*line;
-	char	*temp;
 	size_t	len;
 
-	len = newline_pos - *saved + 1;
-	line = (char *)malloc(sizeof(char) * (len + 1));
-	if (!line)
-	{
-		free(*saved);
-		*saved = NULL;
-		return (NULL);
-	}
-	ft_strlcpy(line, *saved, len + 1);
-	line[len - 1] = '\n';
-	line[len] = '\0';
-	temp = ft_strdup(newline_pos + 1);
-	free(*saved);
-	if (!temp)
-	{
-		free(line);
-		*saved = NULL;
-		return (NULL);
-	}
-	*saved = temp;
+	i = 0;
+	while (stash[i] && stash[i] != '\n')
+		i++;
+	len = i;
+	if (stash[i] == '\n')
+		len++;
+	line = gnl_strdup(stash);
+	if (line)
+		line[len] = '\0';
 	return (line);
 }
 
-static char	*extract_line(char **saved)
+/*
+** Input: stash = "Hello\nWorld"
+** Output: "World"
+*/
+static char	*gnl_trim_stash(char *stash)
 {
-	char	*line;
-	char	*newline_pos;
+	size_t	i;
+	char	*new_stash;
 
-	if (!*saved || !**saved)
+	i = 0;
+	while (stash[i] && stash[i] != '\n')
+		i++;
+	if (!stash[i])
 	{
-		if (*saved)
-		{
-			free(*saved);
-			*saved = NULL;
-		}
+		free(stash);
 		return (NULL);
 	}
-	newline_pos = ft_strchr(*saved, '\n');
-	if (newline_pos)
-		return (process_line_with_newline(saved, newline_pos));
-	line = ft_strdup(*saved);
-	free(*saved);
-	*saved = NULL;
-	if (!line)
-		return (NULL);
-	return (line);
+	new_stash = gnl_strdup(stash + i + 1);
+	free(stash);
+	return (new_stash);
 }
 
-static char	*process_buffer(char **saved, char *buffer)
-{
-	char	*temp;
-
-	if (*saved)
-		temp = ft_strjoin(*saved, buffer);
-	else
-		temp = ft_strdup(buffer);
-	if (!temp)
-	{
-		free(*saved);
-		*saved = NULL;
-		return (NULL);
-	}
-	free(*saved);
-	*saved = temp;
-	return (*saved);
-}
-
-static char	*read_to_saved(int fd, char **saved)
-{
-	char	*buffer;
-	ssize_t	read_bytes;
-
-	buffer = malloc((BUFFER_SIZE + 1) * sizeof(char));
-	if (!buffer)
-		return (NULL);
-	read_bytes = 1;
-	while (read_bytes > 0 && (!*saved || !ft_strchr(*saved, '\n')))
-	{
-		read_bytes = read(fd, buffer, BUFFER_SIZE);
-		if (read_bytes == -1)
-		{
-			free(buffer);
-			free(*saved);
-			*saved = NULL;
-			return (NULL);
-		}
-		if (read_bytes == 0)
-			break ;
-		buffer[read_bytes] = '\0';
-		if (!process_buffer(saved, buffer))
-		{
-			free(buffer);
-			return (NULL);
-		}
-	}
-	free(buffer);
-	return (*saved);
-}
-
+/*
+** Input: fd = 3 (file containing "Hello\nWorld\n")
+** Output: "Hello\n" (first call), "World\n" (second call)
+*/
 char	*get_next_line(int fd)
 {
-	static char	*saved;
+	static char	*stash;
 	char		*line;
 
 	if (fd < 0 || BUFFER_SIZE <= 0)
 		return (NULL);
-	if (!saved || !ft_strchr(saved, '\n'))
-	{
-		if (!read_to_saved(fd, &saved))
-			return (NULL);
-	}
-	line = extract_line(&saved);
+	stash = gnl_read_and_stash(fd, stash);
+	if (!stash)
+		return (NULL);
+	line = gnl_extract_line(stash);
+	stash = gnl_trim_stash(stash);
 	if (!line || !*line)
 	{
 		free(line);
-		if (saved)
-		{
-			free(saved);
-			saved = NULL;
-		}
 		return (NULL);
 	}
 	return (line);
